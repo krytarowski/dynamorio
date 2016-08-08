@@ -410,7 +410,7 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/core/lib) # dr_helper.h
 # Note that the new DynamoRIOConfig.cmake doesn't set these so we can
 # probably remove this line.  We remove from target-specific flags
 # from configure_DynamoRIO_* in tobuild_api().
-remove_definitions(-DX64 -DLINUX -DWINDOWS -DMACOS -DCLANG -DANDROID)
+remove_definitions(-DX64 -DLINUX -DWINDOWS -DMACOS -DCLANG -DANDROID -DNETBSD)
 # If people want perf stress tests they'll have to manually build to avoid
 # the NIGHTLY_REGRESSION define
 set(test_defs "-DNIGHTLY_REGRESSION")
@@ -421,6 +421,8 @@ endif (X64)
 if (UNIX)
   if (APPLE)
     set(platform_defs "${platform_defs} -DMACOS -DUNIX")
+  elseif (CMAKE_SYSTEM_NAME STREQUAL NetBSD)
+    set(platform_defs "${platform_defs} -DNETBSD -DUNIX")
   else (APPLE)
     set(platform_defs "${platform_defs} -DLINUX -DUNIX")
   endif (APPLE)
@@ -751,6 +753,7 @@ function(configure_app_api_build_flags test decoder)
   string(REGEX REPLACE "-DMACOS" "" prop_cflags "${prop_cflags}")
   string(REGEX REPLACE "-DCLANG" "" prop_cflags "${prop_cflags}")
   string(REGEX REPLACE "-DANDROID" "" prop_cflags "${prop_cflags}")
+  string(REGEX REPLACE "-DNETBSD" "" prop_cflags "${prop_cflags}")
   # FIXME: apparently moving cflags to a target property makes it show up
   # in the cpp run for asm targets, where it doesn't if in global var.
   # This causes compilation failure.  Removing -g3 manually as a workaround.
