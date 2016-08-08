@@ -195,6 +195,8 @@ write_thread_register(void *val)
  * be <= 3.
  */
 #  define GDT_NUM_TLS_SLOTS 3 /* index=1 and index=3 are used */
+#elif defined(NETBSD)
+#  define GDT_NUM_TLS_SLOTS 3
 #endif
 
 #define MAX_NUM_CLIENT_TLS 64

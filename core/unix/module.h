@@ -169,7 +169,7 @@ redirect_free(void *ptr);
 void *
 redirect_realloc(void *ptr, size_t size);
 
-#if defined(MACOS) || defined(ANDROID)
+#if defined(MACOS) || defined(ANDROID) || defined(NETBSD)
 typedef FILE stdfile_t;
 # define STDFILE_FILENO _file
 #elif defined(LINUX)

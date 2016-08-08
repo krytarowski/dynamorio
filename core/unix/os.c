@@ -77,6 +77,11 @@
 # include "include/syscall_mach.h"
 #endif
 
+#ifdef NETBSD
+# include <sys/param.h>
+# include <sys/sysctl.h>         /* for sysctl */
+#endif
+
 #ifdef LINUX
 # include <sys/vfs.h> /* for statfs */
 #elif defined(MACOS)
@@ -85,6 +90,8 @@
 # include <mach/task.h>
 # include <mach/semaphore.h>
 # include <mach/sync_policy.h>
+#elif defined(NETBSD)
+# include <sys/statvfs.h> /* for statvfs */
 #endif
 
 #include <dirent.h>
@@ -195,6 +202,9 @@ char **our_environ;
 #ifdef MACOS
 # define SYSNUM_EXIT_PROCESS SYS_exit
 # define SYSNUM_EXIT_THREAD SYS_bsdthread_terminate
+#elif defined(NETBSD)
+# define SYSNUM_EXIT_PROCESS SYS_exit
+# define SYSNUM_EXIT_THREAD SYS__lwp_exit
 #else
 # define SYSNUM_EXIT_PROCESS SYS_exit_group
 # define SYSNUM_EXIT_THREAD SYS_exit
@@ -731,7 +741,7 @@ kernel_is_64bit(void)
     return kernel_64bit;
 }
 
-#ifdef MACOS
+#if defined(MACOS) || defined(NETBSD)
 /* XXX: if we get enough of these, move to os_macos.c or sthg */
 static bool
 sysctl_query(int level0, int level1, void *buf, size_t bufsz)
@@ -753,7 +763,7 @@ get_uname(void)
      * or .data unprot
      */
     static struct utsname uinfo; /* can be large, avoid stack overflow */
-#ifdef MACOS
+#if defiend(MACOS) || defined(NETBSD)
     if (!sysctl_query(CTL_KERN, KERN_OSTYPE, &uinfo.sysname, sizeof(uinfo.sysname)) ||
         !sysctl_query(CTL_KERN, KERN_HOSTNAME, &uinfo.nodename,
                       sizeof(uinfo.nodename)) ||
@@ -813,6 +823,8 @@ os_init(void)
      */
 #ifdef MACOS
     kernel_thread_groups = (dynamorio_syscall(SYS_thread_selfid, 0) >= 0);
+#elif defined(NETBSD)
+    kernel_thread_groups = (dynamorio_syscall(SYS__lwp_self, 0) >= 0);
 #else
     kernel_thread_groups = (dynamorio_syscall(SYS_gettid, 0) >= 0);
 #endif
@@ -887,8 +899,11 @@ os_file_init(void)
     if (DYNAMO_OPTION(steal_fds) > 0) {
         struct rlimit rlimit_nofile;
         /* SYS_getrlimit uses an old 32-bit-field struct so we want SYS_ugetrlimit */
-        if (dynamorio_syscall(IF_MACOS_ELSE(SYS_getrlimit,
-                                            IF_X64_ELSE(SYS_getrlimit, SYS_ugetrlimit)),
+#if defined(MACOS) || defined(NETBSD)
+        if (dynamorio_syscall(SYS_getrlimit,
+#else
+        if (dynamorio_syscall(IF_X64_ELSE(SYS_getrlimit, SYS_ugetrlimit),
+#endif
                               2, RLIMIT_NOFILE, &rlimit_nofile) != 0) {
             /* linux default is 1024 */
             SYSLOG_INTERNAL_WARNING("getrlimit RLIMIT_NOFILE failed"); /* can't LOG yet */
@@ -1099,10 +1114,17 @@ get_timer_frequency()
 uint
 query_time_seconds(void)
 {
-#ifdef MACOS
+#if defined(MACOS)
     struct timeval tv;
     /* MacOS returns usecs:secs and does not set the timeval struct */
     uint64 val = dynamorio_syscall(SYS_gettimeofday, 2, &tv, NULL);
+    if ((int)val < 0)
+        return 0;
+    return (uint)val + UTC_TO_EPOCH_SECONDS;
+#elif defined(NETBSD)
+    struct timeval tv;
+    /* MacOS returns usecs:secs and does not set the timeval struct XXX??? */
+    uint64 val = dynamorio_syscall(SYS___gettimeofday50, 2, &tv, NULL);
     if ((int)val < 0)
         return 0;
     return (uint)val + UTC_TO_EPOCH_SECONDS;
@@ -1123,9 +1145,15 @@ uint64
 query_time_millis()
 {
     struct timeval current_time;
-#ifdef MACOS
+#if defined(MACOS)
     /* MacOS returns usecs:secs and does not set the timeval struct */
     uint64 val = dynamorio_syscall(SYS_gettimeofday, 2, &current_time, NULL);
+    current_time.tv_sec = (uint) val;
+    current_time.tv_usec = (uint)(val >> 32);
+    if ((int)val > 0) {
+#elif defined(NETBSD)
+    /* MacOS returns usecs:secs and does not set the timeval struct */
+    uint64 val = dynamorio_syscall(SYS___gettimeofday50, 2, &current_time, NULL);
     current_time.tv_sec = (uint) val;
     current_time.tv_usec = (uint)(val >> 32);
     if ((int)val > 0) {

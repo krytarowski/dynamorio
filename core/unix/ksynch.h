@@ -74,6 +74,15 @@ static inline void ksynch_set_value(volatile int *futex, int new_val)
 {
     *futex = new_val;
 }
+#elif defined(NETBSD)
+static inline int ksynch_get_value(volatile int *futex)
+{
+    return *futex;
+}
+static inline void ksynch_set_value(volatile int *futex, int new_val)
+{
+    *futex = new_val;
+}
 #else
 ptr_int_t
 ksynch_get_value(mac_synch_t *synch);
