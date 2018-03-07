@@ -53,7 +53,8 @@
 #cmakedefine VMKERNEL
 #cmakedefine MACOS
 #cmakedefine ANDROID
-#if defined(MACOS) || defined (LINUX) || defined(VMKERNEL) || defined(ANDROID)
+#cmakedefine NETBSD
+#if defined(MACOS) || defined (LINUX) || defined(VMKERNEL) || defined(ANDROID) || defined(NETBSD)
 # define UNIX
 #endif
 
@@ -262,6 +263,9 @@
 # elif defined(LINUX)
 #  define HAVE_MEMINFO
 #  define HAVE_MEMINFO_MAPS
+#  define HAVE_TLS
+#  define HAVE_SIGALTSTACK
+# elif defined(NETBSD)
 #  define HAVE_TLS
 #  define HAVE_SIGALTSTACK
 # else
