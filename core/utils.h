@@ -228,7 +228,7 @@ void external_error(const char *file, int line, const char *msg);
 #ifdef WINDOWS
 #  define KSYNCH_TYPE HANDLE
 #  define KSYNCH_TYPE_STATIC_INIT NULL
-#elif defined(LINUX)
+#elif defined(LINUX) || defined(NETBSD)
 #  define KSYNCH_TYPE volatile int
 #  define KSYNCH_TYPE_STATIC_INIT -1
 #elif defined(MACOS)
