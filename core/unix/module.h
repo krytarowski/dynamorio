@@ -180,7 +180,7 @@ void
 redirect_free_initonly(void *mem);
 #endif
 
-#if defined(MACOS) || defined(ANDROID)
+#if defined(MACOS) || defined(ANDROID) || defined(NETBSD)
 typedef FILE stdfile_t;
 # define STDFILE_FILENO _file
 #elif defined(LINUX)
