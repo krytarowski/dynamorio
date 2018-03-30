@@ -85,6 +85,9 @@ byte * get_stack_ptr(void);
 # elif defined(MACOS)
 #  define SCRIPT_RECURSION_MAX 1
 #  define SCRIPT_LINE_MAX 512
+# elif defined(NETBSD)
+#  define SCRIPT_RECURSION_MAX 1
+#  define SCRIPT_LINE_MAX 1024
 # else
 #  error NYI
 # endif
