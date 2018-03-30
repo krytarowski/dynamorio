@@ -43,7 +43,7 @@
 
 #include "configure.h"
 
-#ifdef MACOS
+#if defined(MACOS) || defined(NETBSD)
 /* struct timeval.tv_usec is int, not long int */
 #  define USEC_FMT "d"
 #else
