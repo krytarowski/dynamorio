@@ -52,6 +52,10 @@
 # include <ucontext.h>
 #endif
 
+#ifdef NETBSD
+# include <ucontext.h>
+#endif
+
 #ifdef MACOS
 /* mcontext_t is a pointer and we want the real thing */
 /* We need room for avx.  If we end up with !YMM_ENABLED() we'll just end
@@ -62,11 +66,13 @@ typedef _STRUCT_MCONTEXT_AVX64 sigcontext_t; /* == __darwin_mcontext_avx64 */
 # else
 typedef _STRUCT_MCONTEXT_AVX32 sigcontext_t; /* == __darwin_mcontext_avx32 */
 # endif
+#elif defined(NETBSD)
+typedef ucontext_t sigcontext_t;
 #else
 typedef kernel_sigcontext_t sigcontext_t;
 #endif
 
-#ifdef LINUX
+#if defined(LINUX) || defined(NETBSD)
 # define SIGCXT_FROM_UCXT(ucxt)  ((sigcontext_t*)(&((ucxt)->uc_mcontext)))
 #elif defined(MACOS)
 # ifdef X64
@@ -79,70 +85,73 @@ typedef kernel_sigcontext_t sigcontext_t;
 /* cross-platform sigcontext_t field access */
 #ifdef MACOS
 /* We're using _XOPEN_SOURCE >= 600 so we have __DARWIN_UNIX03 and thus leading __: */
-# define SC_FIELD(name) __ss.__##name
+# define SC_FIELD(name,NAME) __ss.__##name
+#elif defined(NETBSD)
+# define SC_FIELD(name,NAME) __gregs[_REG_##NAME]
 #else
-# define SC_FIELD(name) name
+# define SC_FIELD(name,NAME) name
 #endif
+
 #ifdef X86
 # ifdef X64
-#  define SC_XIP SC_FIELD(rip)
-#  define SC_XAX SC_FIELD(rax)
-#  define SC_XCX SC_FIELD(rcx)
-#  define SC_XDX SC_FIELD(rdx)
-#  define SC_XBX SC_FIELD(rbx)
-#  define SC_XSP SC_FIELD(rsp)
-#  define SC_XBP SC_FIELD(rbp)
-#  define SC_XSI SC_FIELD(rsi)
-#  define SC_XDI SC_FIELD(rdi)
+#  define SC_XIP SC_FIELD(rip,RIP)
+#  define SC_XAX SC_FIELD(rax,RAX)
+#  define SC_XCX SC_FIELD(rcx,RCX)
+#  define SC_XDX SC_FIELD(rdx,RDX)
+#  define SC_XBX SC_FIELD(rbx,RBX)
+#  define SC_XSP SC_FIELD(rsp,RSP)
+#  define SC_XBP SC_FIELD(rbp,RBP)
+#  define SC_XSI SC_FIELD(rsi,RSI)
+#  define SC_XDI SC_FIELD(rdi,RDI)
 #  ifdef MACOS
-#   define SC_XFLAGS SC_FIELD(rflags)
+#   define SC_XFLAGS SC_FIELD(rflags,RFLAGS)
 #  else
-#   define SC_XFLAGS SC_FIELD(eflags)
+#   define SC_XFLAGS SC_FIELD(eflags,EFLAGS)
 #  endif
 # else /* 32-bit */
-#  define SC_XIP SC_FIELD(eip)
-#  define SC_XAX SC_FIELD(eax)
-#  define SC_XCX SC_FIELD(ecx)
-#  define SC_XDX SC_FIELD(edx)
-#  define SC_XBX SC_FIELD(ebx)
-#  define SC_XSP SC_FIELD(esp)
-#  define SC_XBP SC_FIELD(ebp)
-#  define SC_XSI SC_FIELD(esi)
-#  define SC_XDI SC_FIELD(edi)
-#  define SC_XFLAGS SC_FIELD(eflags)
+#  define SC_XIP SC_FIELD(eip,EIP)
+#  define SC_XAX SC_FIELD(eax,EAX)
+#  define SC_XCX SC_FIELD(ecx,ECX)
+#  define SC_XDX SC_FIELD(edx,EDX)
+#  define SC_XBX SC_FIELD(ebx,EBX)
+#  define SC_XSP SC_FIELD(esp,ESP)
+#  define SC_XBP SC_FIELD(ebp,EBP)
+#  define SC_XSI SC_FIELD(esi,ESI)
+#  define SC_XDI SC_FIELD(edi,EDI)
+#  define SC_XFLAGS SC_FIELD(eflags,EFLAGS)
 # endif /* 64/32-bit */
 # define SC_FP SC_XBP
 # define SC_SYSNUM_REG SC_XAX
 # define SC_RETURN_REG SC_XAX
 #elif defined(AARCH64)
    /* FIXME i#1569: NYI */
-# define SC_XIP SC_FIELD(pc)
-# define SC_FP  SC_FIELD(regs[29])
-# define SC_R0  SC_FIELD(regs[0])
-# define SC_R1  SC_FIELD(regs[1])
-# define SC_R2  SC_FIELD(regs[2])
-# define SC_LR  SC_FIELD(regs[30])
-# define SC_XSP SC_FIELD(sp)
-# define SC_XFLAGS SC_FIELD(pstate)
+# define SC_XIP SC_FIELD(pc,PC)
+# define SC_FP  SC_FIELD(regs[29],REGS[20])
+# define SC_R0  SC_FIELD(regs[0],REGS[0])
+# define SC_R1  SC_FIELD(regs[1],REGS[1])
+# define SC_R2  SC_FIELD(regs[2],REGS[2])
+# define SC_LR  SC_FIELD(regs[30],REGS[30])
+# define SC_XSP SC_FIELD(sp,SP)
+# define SC_XFLAGS SC_FIELD(pstate,PSTATE)
 #elif defined(ARM)
-# define SC_XIP SC_FIELD(arm_pc)
-# define SC_FP  SC_FIELD(arm_fp)
-# define SC_R0  SC_FIELD(arm_r0)
-# define SC_R1  SC_FIELD(arm_r1)
-# define SC_R2  SC_FIELD(arm_r2)
-# define SC_R3  SC_FIELD(arm_r3)
-# define SC_R4  SC_FIELD(arm_r4)
-# define SC_R5  SC_FIELD(arm_r5)
-# define SC_R6  SC_FIELD(arm_r6)
-# define SC_R7  SC_FIELD(arm_r7)
-# define SC_R8  SC_FIELD(arm_r8)
-# define SC_R9  SC_FIELD(arm_r9)
-# define SC_R10 SC_FIELD(arm_r10)
-# define SC_R11 SC_FIELD(arm_fp)
-# define SC_R12 SC_FIELD(arm_ip)
-# define SC_XSP SC_FIELD(arm_sp)
-# define SC_LR  SC_FIELD(arm_lr)
-# define SC_XFLAGS SC_FIELD(arm_cpsr)
+# define SC_XIP SC_FIELD(arm_pc,ARM_PC)
+# define SC_FP  SC_FIELD(arm_fp,ARM_FP)
+# define SC_R0  SC_FIELD(arm_r0,ARM_R0)
+# define SC_R1  SC_FIELD(arm_r1,ARM_R1)
+# define SC_R2  SC_FIELD(arm_r2,ARM_R2)
+# define SC_R3  SC_FIELD(arm_r3,ARM_R3)
+# define SC_R4  SC_FIELD(arm_r4,ARM_R4)
+# define SC_R5  SC_FIELD(arm_r5,ARM_R5)
+# define SC_R6  SC_FIELD(arm_r6,ARM_R6)
+# define SC_R7  SC_FIELD(arm_r7,ARM_R7)
+# define SC_R8  SC_FIELD(arm_r8,ARM_R8)
+# define SC_R9  SC_FIELD(arm_r9,ARM_R9)
+# define SC_R10 SC_FIELD(arm_r10,ARM_R10)
+# define SC_R11 SC_FIELD(arm_fp,ARM_FP)
+# define SC_R12 SC_FIELD(arm_ip,ARM_IP)
+# define SC_XSP SC_FIELD(arm_sp,ARM_SP)
+# define SC_LR  SC_FIELD(arm_lr,ARM_LR)
+# define SC_XFLAGS SC_FIELD(arm_cpsr,ARM_R6)
 # define SC_SYSNUM_REG SC_R7
 # define SC_RETURN_REG SC_R0
 #endif /* X86/ARM */
