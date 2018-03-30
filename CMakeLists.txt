@@ -193,6 +193,8 @@ endif()
 # The target OS:
 if (APPLE)
   set(MACOS 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL NetBSD)
+  set(NETBSD 1)
 elseif (UNIX)
   set(LINUX 1)
 endif (APPLE)
